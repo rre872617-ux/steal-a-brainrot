@@ -3,7 +3,8 @@
 -- Solo para cuentas desechables.
 
 -- ✅ Validación de entorno
-if game.PlaceId ~= 123456789 then -- ⚠️ REEMPLAZA 123456789 con el Place ID REAL de "Steal a Brainrot"
+if game.PlaceId ~= 109983668079237
+ then -- ⚠️ REEMPLAZA 123456789 con el Place ID REAL de "Steal a Brainrot"
     warn("[MHX HUB] ❌ Este script solo funciona en 'Steal a Brainrot'")
     return
 end
