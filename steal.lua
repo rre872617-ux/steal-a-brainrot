@@ -1,170 +1,270 @@
--- AMS Ultimate Script Personal Edition for Steal a Brainrot
+-- == [ Steal An Brainrot - Optimized ] ==
+-- Place ID: 100851641119066
+-- Solo para cuentas desechables.
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-
-local player = Players.LocalPlayer
-repeat wait() until player
-repeat wait() until player.Character
-repeat wait() until player.Character:FindFirstChild("HumanoidPart")
-
-local ScriptState = {
-    espEnabled = false,
-    noCollisionEnabled = false,
-    flyEnabled = false,
-    speedEnabled = false,
-    godModeEnabled = false,
-    infiniteJumpEnabled = false,
-    antiAfkEnabled = false,
-    superJumpEnabled = false,
-    baseMarked = false,
-    basePosition = nil,
-    connections = {}
-}
-
-local function notify(title, text, duration)
-    pcall(function()
-        game.StarterGui:SetCore("SendNotification", {
-            Title = "🔥 " .. title,
-            Text = text,
-            Duration = duration or 3,
-            Icon = "rbxassetid://2541869220"
-        })
-    end)
+if game.PlaceId ~= 100851641119066 then
+    warn("[StealABrainrot] ❌ Este script solo funciona en 'Steal An Brainrots - ADMIN MODDED'")
+    return
 end
 
--- ESP Implementation
-local function createESP(targetPlayer)
-    if targetPlayer == player or not targetPlayer.Character then return end
+-- ✅ Carga segura de Rayfield desde fuente oficial
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/refs/heads/main/source.lua', true))()
 
-    local char = targetPlayer.Character
-    local hrp = char:FindFirstChild("HumanoidPart")
-    if not hrp then return end
+local Window = Rayfield:CreateWindow({
+    Name = "Steal A Brainrot Hub",
+    Icon = 4483362458,
+    LoadingTitle = "Brainrot Optimus",
+    LoadingSubtitle = "by Voidware",
+    ShowText = "Brainrot Hub",
+    Theme = "Amethyst",
+    ToggleUIKeybind = "K",
+    DisableRayfieldPrompts = true,
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "BrainrotHub",
+        FileName = "Config"
+    },
+    KeySystem = false
+})
 
-    for _, v in pairs(hrp:GetChildren()) do
-        if v.Name == "Custom_ESP" then v:Destroy() end
+-- Gestor de conexiones
+local ActiveConnections = {}
+local function Cleanup(key)
+    if ActiveConnections[key] then
+        for _, conn in ipairs(ActiveConnections[key]) do
+            if conn and typeof(conn) == "RBXScriptConnection" then
+                conn:Disconnect()
+            end
+        end
+        ActiveConnections[key] = nil
     end
+end
 
-    local esp = Instance.new("BillboardGui")
-    esp.Name = "Custom_ESP"
-    esp.Adornee = hrp
-    esp.Size = UDim2.new(0, 250, 0, 150)
-    esp.StudsOffset = Vector3.new(0, 5, 0)
-    esp.AlwaysOnTop = true
-    esp.Parent = hrp
+-- Player Tab
+local PlayerTab = Window:CreateTab("Player", 4483362458)
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(255, 40, 40)
-    frame.BackgroundTransparency = 0.3
-    frame.BorderSizePixel = 3
-    frame.BorderColor3 = Color3.fromRGB(0, 255, 0)
-    frame.Parent = esp
+-- Speed 50
+local SpeedEnabled = false
+PlayerTab:CreateToggle({
+    Name = "Speed 50",
+    CurrentValue = false,
+    Callback = function(Value)
+        SpeedEnabled = Value
+        local plr = game.Players.LocalPlayer
+        local hum = plr.Character and plr.Character:FindFirstChild("Humanoid")
+        if hum then
+            if SpeedEnabled then
+                hum.WalkSpeed = 50
+                Cleanup("Speed")
+                table.insert(ActiveConnections, hum.StateChanged:Connect(function(_, state)
+                    if state == Enum.HumanoidStateType.Running and SpeedEnabled then
+                        local root = hum.Parent:FindFirstChild("HumanoidRootPart")
+                        if root then
+                            local dir = hum.MoveDirection
+                            if dir.Magnitude > 0 then
+                                root.Velocity = Vector3.new(dir.X * 50, root.Velocity.Y, dir.Z * 50)
+                            end
+                        end
+                    end
+                end))
+            else
+                hum.WalkSpeed = 16
+                Cleanup("Speed")
+            end
+        end
+    end
+})
 
-    local corner = Instance.new("UICorner", frame)
-    corner.CornerRadius = UDim.new(0, 12)
-
-    local labelName = Instance.new("TextLabel", frame)
-    labelName.Size = UDim2.new(1, 0, 0.3, 0)
-    labelName.BackgroundTransparency = 1
-    labelName.Text = "🎯 " .. targetPlayer.Name
-    labelName.TextColor3 = Color3.new(1,1,1)
-    labelName.Font = Enum.Font.GothamBold
-    labelName.TextScaled = true
-    
-    local labelDistance = Instance.new("TextLabel", frame)
-    labelDistance.Size = UDim2.new(1, 0, 0.25, 0)
-    labelDistance.Position = UDim2.new(0, 0, 0.3, 0)
-    labelDistance.BackgroundTransparency = 1
-    labelDistance.TextColor3 = Color3.new(1, 1, 0)
-    labelDistance.Font = Enum.Font.Gotham
-    labelDistance.TextScaled = true
-    
-    local labelHealth = Instance.new("TextLabel", frame)
-    labelHealth.Size = UDim2.new(1, 0, 0.25, 0)
-    labelHealth.Position = UDim2.new(0, 0, 0.55, 0)
-    labelHealth.BackgroundTransparency = 1
-    labelHealth.TextColor3 = Color3.new(0,1,0)
-    labelHealth.Font = Enum.Font.Gotham
-    labelHealth.TextScaled = true
-    
-    local labelStatus = Instance.new("TextLabel", frame)
-    labelStatus.Size = UDim2.new(1, 0, 0.2, 0)
-    labelStatus.Position = UDim2.new(0, 0, 0.8, 0)
-    labelStatus.BackgroundTransparency = 1
-    labelStatus.TextColor3 = Color3.new(1, 0.5, 0)
-    labelStatus.Font = Enum.Font.GothamSemibold
-    labelStatus.TextScaled = true
-    
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if hrp and hrp.Parent and player.Character and player.Character:FindFirstChild("HumanoidPart") then
-            local dist = (player.Character.HumanoidPart.Position - hrp.Position).Magnitude
-            labelDistance.Text = "📏 " .. math.floor(dist) .. "m"
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then
-                local healthPercent = math.floor((humanoid.Health / humanoid.MaxHealth) * 100)
-                labelHealth.Text = "♥ " .. healthPercent .. "%"
-                if healthPercent > 75 then
-                    labelHealth.TextColor3 = Color3.new(0,1,0)
-                elseif healthPercent > 25 then
-                    labelHealth.TextColor3 = Color3.new(1,1,0)
-                else
-                    labelHealth.TextColor3 = Color3.new(1,0,0)
+-- Wall Hack
+local WallHackEnabled = false
+PlayerTab:CreateToggle({
+    Name = "Wall Hack",
+    CurrentValue = false,
+    Callback = function(Value)
+        WallHackEnabled = Value
+        if WallHackEnabled then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and obj.CanCollide then
+                    obj.CanCollide = false
                 end
-
-                if humanoid.MoveDirection.Magnitude > 0 then
-                    labelStatus.Text = "🏃 Moving"
-                elseif humanoid.Jump then
-                    labelStatus.Text = "🦘 Jumping"
-                else
-                    labelStatus.Text = "🧍 Idle"
+            end
+            Cleanup("WallHack")
+            table.insert(ActiveConnections, game:GetService("RunService").Stepped:Connect(function()
+                if WallHackEnabled then
+                    local root = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z)
+                    end
                 end
-            end 
+            end))
         else
-            connection:Disconnect()
-        end
-    end)
-    
-    ScriptState.connections[targetPlayer.Name] = {esp, connection}
-end
-
-local function toggleESP()
-    if ScriptState.espEnabled then
-        -- Turn off ESP
-        for _, data in pairs(ScriptState.connections) do
-            if type(data) == 'table' and data[1] then
-                data[1]:Destroy()
-                if data[2] then data[2]:Disconnect() end
-            end
-        end
-        ScriptState.connections = {}
-        ScriptState.espEnabled = false
-        notify("ESP", "Disabled", 2)
-    else
-        -- Turn on ESP
-        ScriptState.espEnabled = true
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= player and player.Character then
-                createESP(player)
-            end
-        end
-        ScriptState.connections.playerAdded = Players.PlayerAdded:Connect(function(plr)
-            plr.CharacterAdded:Connect(function()
-                wait(2)
-                if ScriptState.espEnabled then
-                    createESP(plr)
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    obj.CanCollide = true
                 end
-            end)
-        end)
-        notify("ESP", "Enabled", 2)
+            end
+            Cleanup("WallHack")
+        end
     end
-end
+})
 
--- Implementation of other features (Fly, Speed, GodMode, etc.) would follow similar approach.
+-- Fly
+local FlyEnabled = false
+PlayerTab:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
+    Callback = function(Value)
+        FlyEnabled = Value
+        local plr = game.Players.LocalPlayer
+        local root = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            if FlyEnabled then
+                local bv = Instance.new("BodyVelocity")
+                bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                bv.Velocity = Vector3.new(0, 0, 0)
+                bv.Parent = root
+                Cleanup("Fly")
+                table.insert(ActiveConnections, game:GetService("RunService").RenderStepped:Connect(function()
+                    if FlyEnabled then
+                        local UIS = game:GetService("UserInputService")
+                        local cam = workspace.CurrentCamera
+                        local move = Vector3.new(
+                            (UIS:IsKeyDown(Enum.KeyCode.D) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.A) and 1 or 0),
+                            (UIS:IsKeyDown(Enum.KeyCode.Space) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.LeftShift) and 1 or 0),
+                            (UIS:IsKeyDown(Enum.KeyCode.W) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.S) and 1 or 0)
+                        )
+                        bv.Velocity = cam.CFrame:VectorToWorldSpace(move * 50)
+                    end
+                end))
+            else
+                for _, v in pairs(root:GetChildren()) do
+                    if v:IsA("BodyVelocity") then v:Destroy() end
+                end
+                Cleanup("Fly")
+            end
+        end
+    end
+})
 
+-- ESP Tab
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+
+-- Player ESP
+ESPTab:CreateToggle({
+    Name = "Player ESP",
+    CurrentValue = false,
+    Callback = function(Value)
+        if Value then
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= game.Players.LocalPlayer and p.Character then
+                    local hl = Instance.new("Highlight")
+                    hl.FillColor = Color3.fromRGB(128, 0, 128)
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 0)
+                    hl.Parent = p.Character
+                end
+            end
+            game.Players.PlayerAdded:Connect(function(p)
+                p.CharacterAdded:Connect(function(c)
+                    if Value then
+                        local hl = Instance.new("Highlight")
+                        hl.FillColor = Color3.fromRGB(128, 0, 128)
+                        hl.OutlineColor = Color3.fromRGB(255, 255, 0)
+                        hl.Parent = c
+                    end
+                end)
+            end)
+        else
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p.Character then
+                    for _, v in pairs(p.Character:GetChildren()) do
+                        if v:IsA("Highlight") then v:Destroy() end
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- Brainrot ESP
+ESPTab:CreateToggle({
+    Name = "Brainrot ESP",
+    CurrentValue = false,
+    Callback = function(Value)
+        if Value then
+            for _, item in pairs(workspace:GetDescendants()) do
+                if item.Name:match("Brainrot") or item.Name:match("Tralelero") or item.Name:match("Saturnita") or item.Name:match("Balerina") then
+                    local hl = Instance.new("Highlight")
+                    hl.FillColor = Color3.fromRGB(0, 0, 255)
+                    hl.OutlineColor = Color3.fromRGB(255, 0, 0)
+                    hl.Parent = item
+                end
+            end
+        else
+            for _, item in pairs(workspace:GetDescendants()) do
+                for _, v in pairs(item:GetChildren()) do
+                    if v:IsA("Highlight") then v:Destroy() end
+                end
+            end
+        end
+    end
+})
+
+-- Actions Tab
+local ActionsTab = Window:CreateTab("Actions", 4483362458)
+
+-- Steal All Brainrots
+ActionsTab:CreateButton({
+    Name = "Steal All Brainrots",
+    Callback = function()
+        local valuable = {"Tralelero", "Saturnita", "Balerina Capucina", "Coco Fanto Ele Fanto", "orcalero Orcala", "odin din dun", "Dragons"}
+        for _, item in pairs(workspace:GetDescendants()) do
+            for _, name in pairs(valuable) do
+                if item.Name == name then
+                    item.Parent = game.Players.LocalPlayer.Character
+                end
+            end
+        end
+    end
+})
+
+-- Go Base
+ActionsTab:CreateButton({
+    Name = "Go Base",
+    Callback = function()
+        local base = workspace:FindFirstChild("Base")
+        local plr = game.Players.LocalPlayer
+        if base and plr.Character then
+            plr.Character.HumanoidRootPart.CFrame = base.CFrame
+        end
+    end
+})
+
+-- No Falling
+local NoFall = false
+ActionsTab:CreateToggle({
+    Name = "No Falling",
+    CurrentValue = false,
+    Callback = function(Value)
+        NoFall = Value
+        if NoFall then
+            local hum = game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+            if hum then
+                Cleanup("NoFall")
+                table.insert(ActiveConnections, hum.StateChanged:Connect(function(_, state)
+                    if state == Enum.HumanoidStateType.FallingDown and NoFall then
+                        hum:ChangeState(Enum.HumanoidStateType.Running)
+                    end
+                end))
+            end
+        else
+            Cleanup("NoFall")
+        end
+    end
+})
+
+-- Notificación final
+Rayfield:Notify({
+    Title = "Brainrot Hub",
+    Content = "Cargado con éxito. Presiona 'K' para ocultar/mostrar.",
+    Duration = 5
+})
